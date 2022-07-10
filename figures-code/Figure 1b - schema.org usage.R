@@ -34,7 +34,7 @@ dde = dde %>% select(-`_id`, -`@context`, -`_score`, `_meta`, -`_ts`, -`_meta`, 
 props_dde = colnames(dde) 
 
 # count frequency of each property in the DDE ----------------------------------------
-countNA = function(df, property, nameListProps = c("sdPublisher")) {
+countNA = function(df, property, nameListProps = c("sdPublisher", "temporalCoverage")) {
   print(property)
   # properties like sdPublisher are lists with a value "name"
   if(property %in% nameListProps) {
