@@ -1,0 +1,142 @@
+---
+title: "DDE entries by grant number"
+author: "NIAID Systems Biology Data Dissemination Working Group"
+---
+
+# Datasets registered in the Data Discovery Engine
+
+::: {#overview}
+Using the [Data Discovery Engine](https://discovery.biothings.io/portal/niaid), the NIAID Systems Biology groups registered datasets and computational tools they published publicly. Here, we will break down where the datasets are registered, grouped by funding grant.
+:::
+
+## Grab the data
+
+```{r, import_packages, message=FALSE}
+library(tidyverse)
+library(httr)
+library(jsonlite)
+library(knitr)
+```
+
+```{r, load_metadata}
+# Load the metadata deposited in the Data Discovery Engine
+url = "https://api.data.niaid.nih.gov/v1/query?q=includedInDataCatalog.name:%22Data%20Discovery%20Engine%22%20AND%20@type:Dataset&size=1000"
+
+resp = httr::GET(URLencode(url))
+
+if(resp$status_code == 200) {
+  results = jsonlite::fromJSON(content(resp, as="text"))
+  df_raw = results$hits
+}
+
+```
+
+## Create a table of datasets by funding identifier
+
+```{r, flatten_metadata}
+# Create a function to grab a specific property from an array of objects
+getProperty = function(x, propertyName = "name") {
+  if(length(x) > 0) {
+    if(propertyName %in% names(x)) {
+      source_names = x[[propertyName]]
+    } else {
+      source_names = x
+    }
+  
+        if(length(source_names) > 1) {
+      return(paste(source_names, collapse = "#"))
+    } else {
+      return(source_names)
+    }
+    
+  } else {
+    return("not specified")
+  }
+}
+
+# Flatten all the objects into a single long data frame
+df = df_raw %>% 
+  rowwise() %>% 
+  # flatten the objects
+  mutate(funding_identifier_raw = getProperty(funding, "identifier"),
+         sdPublisher_str = str_trim(getProperty(sdPublisher)),
+         measurementTechnique_str = getProperty(measurementTechnique),
+         infectiousAgent_str = getProperty(infectiousAgent)
+         ) %>% 
+  # pull out the funding identifiers from every funding object
+  unnest(cols = funding_identifier_raw) %>% 
+  # split on commas
+  mutate(funding_identifier_raw = str_split(funding_identifier_raw, ",")) %>%
+  unnest(cols = funding_identifier_raw) %>%
+  # standardize funding identifier structures
+  mutate(funding_identifier = str_trim(str_replace_all(funding_identifier_raw, "-", "")),
+         funding_identifier= str_replace_all(funding_identifier, " ", ""),
+         # make sure U/R grants are all 10 digits
+         funding_identifier = ifelse(
+           # e.g. 1U19AI13599001
+           str_detect(funding_identifier, "[0-9]([RU][0-9]{2})([A-Z]{2})([0-9]{8})"), str_sub(funding_identifier, 2, 12), 
+           # e.g. U01AI12427505
+           ifelse(str_detect(funding_identifier, "([RU][0-9]{2})([A-Z]{2})([0-9]{8})"), str_sub(funding_identifier, 1, 11),
+                  funding_identifier)
+         )
+  )
+
+# Match grant number to name
+# Note: some of this is captured in the author name, but it's a bit unstandardized whether the author is the consortium name and/or the lab name and/or the scientist name.
+grantLookup = list("HHSN272201200031C1" = "MaPHIC", 
+                   "U01AI111598" = "FluDyNeMo", 
+                   "U19AI106754" = "FluOMICS",
+                   "U19AI106761" = "Omics4TB",
+                   "U19AI106772" = "OmicsLHV",
+                   "U01AI124255" = "Systems biology of Clostridium difficile infection",
+                   "U01AI124275" = "Systems Biology of Microbiome-mediated Resilience to Antibiotic-resistant Pathogens",
+                   "U01AI124290" = "Decoding Antibiotic-induced Susceptibility to Clostridium difficile Infection",
+                   "U01AI124302" = "Predicting the emergence of antibiotic resistance through multi-omics approaches and Immune System-surveillance",
+                   "U01AI124316" = "Systems Biology Approach to Redefine Susceptibility Testing and Treatment of MDR Pathogens in the Context of Host Immunity",
+                   "U01AI124319" = "Systems Immunolobiology of Antibiotic-Persistent MRSA Infection",
+                   "U19AI135972" = "FluOMICS: The Next Generation",
+                   "U19AI135976" = "Omics4TB",
+                   "U19AI135990" = "HPMI",
+                   "U19AI135995" = "Center for Viral Systems Biology (CViSB)",
+                   "U19Al135964" = "SCRIPT"
+                   )
+
+df = df %>% 
+  rowwise() %>% 
+  mutate(author_name = ifelse(funding_identifier %in% names(grantLookup), grantLookup[[funding_identifier]], NA)) %>% 
+  # remove any entries that aren't related to the SysBio program
+  filter(!is.na(author_name))
+```
+
+```{r, generate_table}
+# get super long table of infectiousAgents and measurementTechniques
+df_long = df %>% 
+  mutate(pathogens_str = infectiousAgent_str) %>%    
+  unnest(cols = infectiousAgent_str) %>%
+  mutate(pathogens = str_split(infectiousAgent_str, "#")) %>%
+  unnest(cols = pathogens) %>%
+  mutate(pathogens = str_trim(pathogens),
+         techniques = str_split(measurementTechnique_str, "#")) %>%
+  unnest(cols = techniques) %>%
+  mutate(techniques = str_trim(techniques))
+
+pathogens_techniques = df_long %>% 
+  group_by(funding_identifier) %>% 
+  summarise(infectious_agent = list(unique(sort(pathogens))),
+            measurement_technique = list(unique(sort(techniques)))
+            )
+
+counts = df %>% 
+  group_by(funding_identifier) %>% 
+  summarise(
+    author_name = unique(author_name),
+    dde_entries = n(),
+    data_repositories = list(unique(sort(sdPublisher_str)))
+  ) %>% 
+  full_join(pathogens_techniques, by = "funding_identifier") %>% 
+  select(funding_identifier, author_name, infectious_agent, measurement_technique, dde_entries, data_repositories)
+
+
+
+kable(counts)
+```
