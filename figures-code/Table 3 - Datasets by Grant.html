@@ -183,9 +183,9 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>         ) <span class="sc">%&gt;%</span> </span>
 <span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>  <span class="co"># pull out the funding identifiers from every funding object</span></span>
 <span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="at">cols =</span> funding_identifier_raw) <span class="sc">%&gt;%</span> </span>
-<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>  <span class="co"># split on commas</span></span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>  <span class="co"># split on commas, slashes</span></span>
 <span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">funding_identifier_raw =</span> <span class="fu">str_split</span>(funding_identifier_raw, <span class="st">","</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="at">cols =</span> funding_identifier_raw) <span class="sc">%&gt;%</span></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="at">cols =</span> funding_identifier_raw) <span class="sc">%&gt;%</span> </span>
 <span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>  <span class="co"># standardize funding identifier structures</span></span>
 <span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">funding_identifier =</span> <span class="fu">str_trim</span>(<span class="fu">str_replace_all</span>(funding_identifier_raw, <span class="st">"-"</span>, <span class="st">""</span>)),</span>
 <span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>         <span class="at">funding_identifier=</span> <span class="fu">str_replace_all</span>(funding_identifier, <span class="st">" "</span>, <span class="st">""</span>),</span>
@@ -235,36 +235,39 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">pathogens =</span> <span class="fu">str_trim</span>(pathogens),</span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>         <span class="at">techniques =</span> <span class="fu">str_split</span>(measurementTechnique_str, <span class="st">"#"</span>)) <span class="sc">%&gt;%</span></span>
 <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="at">cols =</span> techniques) <span class="sc">%&gt;%</span></span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">techniques =</span> <span class="fu">str_trim</span>(techniques))</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>pathogens_techniques <span class="ot">=</span> df_long <span class="sc">%&gt;%</span> </span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(funding_identifier) <span class="sc">%&gt;%</span> </span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">infectious_agent =</span> <span class="fu">list</span>(<span class="fu">unique</span>(<span class="fu">sort</span>(pathogens))),</span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>            <span class="at">measurement_technique =</span> <span class="fu">list</span>(<span class="fu">unique</span>(<span class="fu">sort</span>(techniques)))</span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>counts <span class="ot">=</span> df <span class="sc">%&gt;%</span> </span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(funding_identifier) <span class="sc">%&gt;%</span> </span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">author_name =</span> <span class="fu">unique</span>(author_name),</span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">dde_entries =</span> <span class="fu">n</span>(),</span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">data_repositories =</span> <span class="fu">list</span>(<span class="fu">unique</span>(<span class="fu">sort</span>(sdPublisher_str)))</span>
-<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
-<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">full_join</span>(pathogens_techniques, <span class="at">by =</span> <span class="st">"funding_identifier"</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(funding_identifier, author_name, infectious_agent, measurement_technique, dde_entries, data_repositories)</span>
-<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(counts)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">techniques =</span> <span class="fu">str_trim</span>(techniques),</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>         <span class="at">repos =</span> <span class="fu">str_split</span>(sdPublisher_str, <span class="st">"/"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="at">cols =</span> repos) <span class="sc">%&gt;%</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">repos =</span> <span class="fu">str_trim</span>(repos))</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>pathogens_techniques <span class="ot">=</span> df_long <span class="sc">%&gt;%</span> </span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(funding_identifier) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">infectious_agent =</span> <span class="fu">list</span>(<span class="fu">unique</span>(<span class="fu">sort</span>(pathogens))),</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>            <span class="at">measurement_technique =</span> <span class="fu">list</span>(<span class="fu">unique</span>(<span class="fu">sort</span>(techniques))),</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>            <span class="at">data_repositories =</span> <span class="fu">list</span>(<span class="fu">unique</span>(<span class="fu">sort</span>(repos)))</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>counts <span class="ot">=</span> df <span class="sc">%&gt;%</span> </span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(funding_identifier) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">author_name =</span> <span class="fu">unique</span>(author_name),</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">dde_entries =</span> <span class="fu">n</span>()</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">full_join</span>(pathogens_techniques, <span class="at">by =</span> <span class="st">"funding_identifier"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(funding_identifier, author_name, infectious_agent, measurement_technique, dde_entries, data_repositories)</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(counts)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <table class="table table-sm table-striped">
 <colgroup>
 <col style="width: 1%">
 <col style="width: 10%">
-<col style="width: 37%">
-<col style="width: 37%">
+<col style="width: 38%">
+<col style="width: 38%">
 <col style="width: 1%">
-<col style="width: 11%">
+<col style="width: 8%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -355,7 +358,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <td style="text-align: left;">Mycobacterium smegmatis , Mycobacterium tuberculosis , Mycolicibacterium smegmatis</td>
 <td style="text-align: left;">Amplicon Sequencing (TRIP), Cell Sorting , ChIP-seq , genomics , Microarray , Microarray Analysis , Microarray experiment , RNA-seq , RNA-Seq , transcriptomics</td>
 <td style="text-align: right;">12</td>
-<td style="text-align: left;">GEO , Macrophage Network Portal/GEO , MTB Network Portal/GEO , MTB Network Portal/GEO (pprivate)</td>
+<td style="text-align: left;">GEO , GEO (pprivate) , Macrophage Network Portal, MTB Network Portal</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">U19AI106772</td>
@@ -379,7 +382,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <td style="text-align: left;">Mycobacterium smegmatis , Mycobacterium tuberculosis , Mycolicibacterium smegmatis</td>
 <td style="text-align: left;">amplicon-sequencing (TRIP) , Fluorescence Activated Cell Sorting, genomics , Microarray , RNA Isolation , RNA sequencing , RNA-Seq , transcriptomics</td>
 <td style="text-align: right;">12</td>
-<td style="text-align: left;">GEO/NCBI, SRA</td>
+<td style="text-align: left;">GEO , NCBI, SRA</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">U19AI135990</td>

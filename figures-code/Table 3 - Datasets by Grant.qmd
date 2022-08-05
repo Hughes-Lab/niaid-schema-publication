@@ -65,9 +65,9 @@ df = df_raw %>%
          ) %>% 
   # pull out the funding identifiers from every funding object
   unnest(cols = funding_identifier_raw) %>% 
-  # split on commas
+  # split on commas, slashes
   mutate(funding_identifier_raw = str_split(funding_identifier_raw, ",")) %>%
-  unnest(cols = funding_identifier_raw) %>%
+  unnest(cols = funding_identifier_raw) %>% 
   # standardize funding identifier structures
   mutate(funding_identifier = str_trim(str_replace_all(funding_identifier_raw, "-", "")),
          funding_identifier= str_replace_all(funding_identifier, " ", ""),
@@ -118,20 +118,23 @@ df_long = df %>%
   mutate(pathogens = str_trim(pathogens),
          techniques = str_split(measurementTechnique_str, "#")) %>%
   unnest(cols = techniques) %>%
-  mutate(techniques = str_trim(techniques))
+  mutate(techniques = str_trim(techniques),
+         repos = str_split(sdPublisher_str, "/")) %>% 
+  unnest(cols = repos) %>%
+  mutate(repos = str_trim(repos))
 
 pathogens_techniques = df_long %>% 
   group_by(funding_identifier) %>% 
   summarise(infectious_agent = list(unique(sort(pathogens))),
-            measurement_technique = list(unique(sort(techniques)))
+            measurement_technique = list(unique(sort(techniques))),
+            data_repositories = list(unique(sort(repos)))
             )
 
 counts = df %>% 
   group_by(funding_identifier) %>% 
   summarise(
     author_name = unique(author_name),
-    dde_entries = n(),
-    data_repositories = list(unique(sort(sdPublisher_str)))
+    dde_entries = n()
   ) %>% 
   full_join(pathogens_techniques, by = "funding_identifier") %>% 
   select(funding_identifier, author_name, infectious_agent, measurement_technique, dde_entries, data_repositories)
