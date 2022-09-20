@@ -34,9 +34,9 @@ dde = dde %>% select(-`_id`, -`@context`, -`_score`, `_meta`, -`_ts`, -`_meta`, 
 props_dde = colnames(dde) 
 
 # count frequency of each property in the DDE ----------------------------------------
-countNA = function(df, property, nameListProps = c("sdPublisher", "temporalCoverage")) {
+countNA = function(df, property, nameListProps = c("temporalCoverage")) {
   print(property)
-  # properties like sdPublisher are lists with a value "name"
+  # properties like temporalCoverage are lists with a value "name"
   if(property %in% nameListProps) {
     counts = df %>% count(is.na(.data[[property]]["name"]))
   } else {
@@ -48,17 +48,23 @@ countNA = function(df, property, nameListProps = c("sdPublisher", "temporalCover
   total = counts %>% summarise(total = sum(n)) %>% pull(total)
   available = counts %>% filter(name == FALSE) %>% pull(n)
   
-  results = tribble(~property, ~num_available, ~total, ~pct_available, 
-                    property, available, total, available/total
+  results = tribble(~property, ~num_available, ~total,
+                    property, available, total
   )
-  
   return(results)
 }
 
 
 counts_dde = map_df(props_dde, function(x) countNA(dde, x)) %>% 
-  arrange(desc(pct_available), property) %>% 
-  mutate(source = "Data Discovery Engine")
+  mutate(# infectiousDisease is a deprecated property which has been replaced by healthCondition
+    property = ifelse(property == "infectiousDisease", "healthCondition", property)
+  ) %>% 
+  group_by(property) %>% 
+  summarise(num_available = sum(num_available),
+            total = mean(total)) %>% 
+  mutate(source = "Data Discovery Engine",
+         pct_available = num_available / total) %>%
+  arrange(desc(pct_available), property)
 
 # Pull data from Metadata Crawler -----------------------------------------
 md_url = "https://crawler.biothings.io/api/query?facets=_index&size=0&q=_exists_:"
@@ -143,7 +149,7 @@ counts = counts %>% left_join(total_counts %>% select(property, property_num), b
 
 counts = bind_rows(counts, total_counts)
 # hand sort the properties
-counts$source = factor(counts$source, rev(c("ImmPort", "Harvard Dataverse","NCBI GEO", "Zenodo", "OmicsDI", "NYU Data Catalog", "indexed_discovery", "Data Discovery Engine", "AVERAGE")))
+counts$source = factor(counts$source, rev(c("ImmPort", "Harvard Dataverse","NCBI GEO", "Zenodo", "Data Discovery Engine", "OmicsDI", "NYU Data Catalog", "AVERAGE")))
 
 ggplot(counts, aes(x = property_num, y = source, fill = pct_available)) +
   geom_tile() +
@@ -157,5 +163,3 @@ ggplot(counts, aes(x = property_num, y = source, fill = pct_available)) +
         axis.text.x.bottom = element_text(angle = -45, hjust = 0),
         axis.title = element_blank(),
         legend.position = "none")
-
-# TODO: fix healthCondition / infectiousDisease
