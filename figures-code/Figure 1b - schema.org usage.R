@@ -9,7 +9,9 @@ library(tidyverse)
 library(httr)
 library(data.table)
 library(jsonlite)
+library(extrafont)
 
+extrafont::loadfonts()
 
 # Get DDE dataset metadata ------------------------------------------------
 
@@ -163,3 +165,5 @@ ggplot(counts, aes(x = property_num, y = source, fill = pct_available)) +
         axis.text.x.bottom = element_text(angle = -45, hjust = 0),
         axis.title = element_blank(),
         legend.position = "none")
+
+ggsave("~/Google Drive/Manuscripts/2022 - NIAID Schema/Figures/fig1b.pdf", device = "pdf", width = 12, height = 5)
